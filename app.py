@@ -1,75 +1,82 @@
-import os
-import re
 import subprocess
-import logging
+import os
+
+# Ensure the script is executable
+subprocess.run(["chmod", "+x", "imports.bash"], check=True)
+
+# Run the Bash script
+subprocess.run(["bash", "imports.bash"], check=True)
+
+print("Setup script executed successfully.")
+
+from flask import Flask, request, jsonify, render_template
+import re
 from phonemizer import phonemize
 from phonemizer.backend import EspeakBackend
-from IPython.display import Audio, display
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+app = Flask(__name__)
+UPLOAD_DIR = "static/audio"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Directory for audio files
-AUDIO_DIR = "ipa_audio"
-os.makedirs(AUDIO_DIR, exist_ok=True)
+LANGUAGE_MAP = {
+    "en": "en",
+    "fr-fr": "fr-fr",
+    "es": "es",
+    "de": "de",
+    "it": "it"
+}
 
-# Clean IPA to safe filenames
-def sanitize_filename(ipa_symbol):
-    return re.sub(r'[^a-zA-Z0-9]', '_', ipa_symbol)
+def sanitize_filename(text):
+    return re.sub(r'[^a-zA-Z0-9]', '_', text)
 
-# Generate audio from original text (NOT IPA)
-def generate_audio_with_espeak(original_text, lang_code, label):
+def generate_audio(text, lang_code, label):
     filename = f"{sanitize_filename(label)}.wav"
-    filepath = os.path.join(AUDIO_DIR, filename)
-
+    filepath = os.path.join(UPLOAD_DIR, filename)
     try:
         subprocess.run([
             'espeak',
             f'-v{lang_code}',
             f'-w{filepath}',
-            original_text
+            text
         ], check=True)
         return filepath
     except Exception as e:
-        logging.error(f"Failed to generate audio for '{original_text}': {e}")
+        print(f"Error generating audio: {e}")
         return None
 
-# Handle long input & generate IPA + audio
-def process_user_input(text, input_language):
-    lang_code = LANGUAGE_MAP.get(input_language, input_language)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
+@app.route('/api/process', methods=['POST'])
+def process():
+    data = request.json
+    text = data.get('text', '').strip()
+    lang = data.get('language', 'en')
+    
+    lang_code = LANGUAGE_MAP.get(lang, 'en')
     if lang_code not in EspeakBackend.supported_languages():
-        print(f"Language '{input_language}' (→ '{lang_code}') not supported.")
-        return
+        return jsonify({"error": "Unsupported language."}), 400
 
-    # Split input into chunks of ≤ 25 words
     words = text.split()
     chunks = [' '.join(words[i:i+25]) for i in range(0, len(words), 25)]
 
-    for i, chunk in enumerate(chunks, 1):
-        print(f"\nChunk {i}: \"{chunk}\"")
-
+    result = []
+    for i, chunk in enumerate(chunks):
         try:
-            phonemized_text = phonemize(
+            ipa = phonemize(
                 chunk,
                 language=lang_code,
                 backend='espeak',
                 strip=True
             )
+            audio_path = generate_audio(chunk, lang_code, f"chunk_{i}")
+            audio_url = f"/{audio_path}" if audio_path else None
+            result.append({"text": chunk, "ipa": ipa, "audio": audio_url})
         except Exception as e:
-            print(f"Error phonemizing chunk: {e}")
-            continue
+            result.append({"text": chunk, "ipa": "[error]", "audio": None})
 
-        print(f"IPA: {phonemized_text}")
+    return jsonify(result)
 
-        audio_file = generate_audio_with_espeak(chunk, lang_code, f"chunk_{i}")
-        if audio_file and os.path.exists(audio_file):
-            display(Audio(audio_file))
-        else:
-            print("Audio generation failed.")
-
-# Run
-text_input = input("Enter text: ").strip()
-lang_input = input("Enter valid espeak language code: ").strip()
-process_user_input(text_input, lang_input)
-
+if __name__ == '__main__':
+    app.run(debug=True)
