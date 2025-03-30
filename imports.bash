@@ -8,6 +8,6 @@ sudo apt-get install -y espeak-ng
 
 # Install Python dependencies
 python3 -m pip install --upgrade pip
-sudo python3 -m pip install phonemizer requests
+sudo python3 -m pip install flask phonemizer requests
 
 echo "Setup complete."
