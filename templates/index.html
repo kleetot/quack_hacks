@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPA Generator with Audio</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .container {
+      margin-top: 50px;
+    }
+    .output {
+      background-color: #e9ecef;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .chunk {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center mb-4">IPA Generator with Audio</h1>
+
+    <div class="mb-3">
+      <label for="inputText" class="form-label">Enter Text (up to 100 words):</label>
+      <textarea class="form-control" id="inputText" rows="4" placeholder="Type your sentence here..."></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="language" class="form-label">Select Language:</label>
+      <select class="form-select" id="language">
+        <option value="en">English</option>
+        <option value="fr-fr">French</option>
+        <option value="es">Spanish</option>
+        <option value="de">German</option>
+        <option value="it">Italian</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary w-100" onclick="processText()">Generate IPA + Audio</button>
+
+    <div id="output" class="output mt-4"></div>
+  </div>
+
+  <script>
+    async function processText() {
+      const text = document.getElementById('inputText').value.trim();
+      const lang = document.getElementById('language').value;
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+
+      if (!text) {
+        output.innerHTML = '<div class="alert alert-warning">Please enter some text.</div>';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/process', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ text, language: lang })
+        });
+
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+          data.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'chunk';
+
+            div.innerHTML = `
+              <h5>Chunk ${index + 1}</h5>
+              <p><strong>Text:</strong> ${item.text}</p>
+              <p><strong>IPA:</strong> ${item.ipa}</p>
+              ${item.audio ? `<audio controls src="${item.audio}"></audio>` : '<p class="text-danger">Audio generation failed.</p>'}
+              <hr/>
+            `;
+
+            output.appendChild(div);
+          });
+        } else {
+          output.innerHTML = `<div class="alert alert-danger">Error: ${data.error || 'Unknown error'}</div>`;
+        }
+      } catch (err) {
+        console.error(err);
+        output.innerHTML = '<div class="alert alert-danger">An error occurred while processing your request.</div>';
+      }
+    }
+  </script>
+</body>
+</html>
