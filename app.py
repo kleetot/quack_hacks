@@ -1,9 +1,6 @@
 import subprocess
 import os
 
-# Ensure the script is executable
-subprocess.run(["chmod", "+x", "imports.bash"], check=True)
-
 # Run the Bash script
 subprocess.run(["bash", "imports.bash"], check=True)
 
