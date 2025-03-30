@@ -1,13 +1,7 @@
-import subprocess
-import os
-
-# Run the Bash script
-subprocess.run(["bash", "imports.bash"], check=True)
-
-print("Setup script executed successfully.")
-
 from flask import Flask, request, jsonify, render_template
+import os
 import re
+import subprocess
 from phonemizer import phonemize
 from phonemizer.backend import EspeakBackend
 
@@ -15,7 +9,8 @@ app = Flask(__name__)
 UPLOAD_DIR = "static/audio"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-LANGUAGE_MAP = {
+# Full map of possible languages
+FULL_LANGUAGE_MAP = {
     'afrikaans': 'af',
     'aragonese': 'an',
     'bulgarian': 'bg',
@@ -92,6 +87,10 @@ LANGUAGE_MAP = {
     'cantonese': 'zh-yue'
 }
 
+# Filter to only languages supported by Phonemizer's espeak backend
+SUPPORTED_LANG_CODES = EspeakBackend.supported_languages()
+LANGUAGE_MAP = {name: code for name, code in FULL_LANGUAGE_MAP.items() if code in SUPPORTED_LANG_CODES}
+
 def sanitize_filename(text):
     return re.sub(r'[^a-zA-Z0-9]', '_', text)
 
@@ -99,7 +98,6 @@ def generate_audio(text, lang_code, label):
     filename = f"{sanitize_filename(label)}.wav"
     filepath = os.path.join(UPLOAD_DIR, filename)
     try:
-        # Wrap text in quotes to avoid argument issues and use shell=True for proper command parsing
         command = f'espeak -v {lang_code} -w {filepath} "{text}"'
         subprocess.run(command, shell=True, check=True)
         return filepath
@@ -111,14 +109,18 @@ def generate_audio(text, lang_code, label):
 def index():
     return render_template('index.html')
 
+@app.route('/api/languages')
+def get_languages():
+    return jsonify(sorted(LANGUAGE_MAP.keys()))
+
 @app.route('/api/process', methods=['POST'])
 def process():
     data = request.json
     text = data.get('text', '').strip()
-    lang = data.get('language', 'en')
-    
+    lang = data.get('language', 'english')
+
     lang_code = LANGUAGE_MAP.get(lang, 'en')
-    if lang_code not in EspeakBackend.supported_languages():
+    if lang_code not in SUPPORTED_LANG_CODES:
         return jsonify({"error": "Unsupported language."}), 400
 
     words = text.split()
@@ -137,6 +139,7 @@ def process():
             audio_url = f"/{audio_path}" if audio_path else None
             result.append({"text": chunk, "ipa": ipa, "audio": audio_url})
         except Exception as e:
+            print(f"Error processing chunk {i}: {e}")
             result.append({"text": chunk, "ipa": "[error]", "audio": None})
 
     return jsonify(result)
