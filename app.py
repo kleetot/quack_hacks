@@ -1,7 +1,11 @@
-from flask import Flask, request, jsonify, render_template
-import os
-import re
 import subprocess
+import os
+
+subprocess.run(["bash", "imports.bash"], check=True)
+
+
+from flask import Flask, request, jsonify, render_template
+import re
 from phonemizer import phonemize
 from phonemizer.backend import EspeakBackend
 
