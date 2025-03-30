@@ -32,22 +32,42 @@
       <textarea class="form-control" id="inputText" rows="4" placeholder="Type your sentence here..."></textarea>
     </div>
 
-    <div class="mb-3">
-      <label for="language" class="form-label">Select Language:</label>
-      <select class="form-select" id="language">
-        <option value="en">English</option>
-        <option value="fr-fr">French</option>
-        <option value="es">Spanish</option>
-        <option value="de">German</option>
-        <option value="it">Italian</option>
-      </select>
-    </div>
+  <div class="mb-3">
+    <label for="language" class="form-label">Select Language:</label>
+    <select class="form-select" id="language">
+      <option disabled selected>Loading languages...</option>
+    </select>
+  </div>
+
 
     <button class="btn btn-primary w-100" onclick="processText()">Generate IPA + Audio</button>
 
     <div id="output" class="output mt-4"></div>
   </div>
 
+  <script>
+    // Populate language dropdown on page load
+    window.addEventListener('DOMContentLoaded', async () => {
+      const select = document.getElementById('language');
+      select.innerHTML = ''; // Clear existing options
+  
+      try {
+        const res = await fetch('/api/languages');
+        const langs = await res.json();
+  
+        langs.forEach(lang => {
+          const opt = document.createElement('option');
+          opt.value = lang;
+          opt.textContent = lang.charAt(0).toUpperCase() + lang.slice(1);
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("Failed to fetch languages", e);
+        select.innerHTML = '<option disabled>Error loading languages</option>';
+      }
+    });
+  </script>
+  
   <script>
     async function processText() {
       const text = document.getElementById('inputText').value.trim();
