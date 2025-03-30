@@ -30,12 +30,9 @@ def generate_audio(text, lang_code, label):
     filename = f"{sanitize_filename(label)}.wav"
     filepath = os.path.join(UPLOAD_DIR, filename)
     try:
-        subprocess.run([
-            'espeak',
-            f'-v{lang_code}',
-            f'-w{filepath}',
-            text
-        ], check=True)
+        # Wrap text in quotes to avoid argument issues and use shell=True for proper command parsing
+        command = f'espeak -v {lang_code} -w {filepath} "{text}"'
+        subprocess.run(command, shell=True, check=True)
         return filepath
     except Exception as e:
         print(f"Error generating audio: {e}")
