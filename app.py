@@ -1,28 +1,18 @@
-from flask import Flask, request, jsonify, render_template
-import os
-import re
 import subprocess
+import os
+
+# Ensure the script is executable
+subprocess.run(["chmod", "+x", "imports.bash"], check=True)
+
+# Run the Bash script
+subprocess.run(["bash", "imports.bash"], check=True)
+
+print("Setup script executed successfully.")
+
+from flask import Flask, request, jsonify, render_template
+import re
 from phonemizer import phonemize
 from phonemizer.backend import EspeakBackend
-
-# Run bash script first
-def run_setup():
-    setup_script = """#!/bin/bash
-    sudo apt-get update
-    sudo apt-get install -y espeak-ng
-    python3 -m pip install --upgrade pip
-    python3 -m pip install phonemizer requests
-    echo "Setup complete."
-    """
-    
-    with open("setup.sh", "w") as f:
-        f.write(setup_script)
-
-    os.chmod("setup.sh", 0o755)  # Make it executable
-    subprocess.run(["bash", "setup.sh"], check=True)
-
-# Run setup
-run_setup()
 
 app = Flask(__name__)
 UPLOAD_DIR = "static/audio"
