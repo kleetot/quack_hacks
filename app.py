@@ -6,26 +6,6 @@ from phonemizer import phonemize
 from phonemizer.backend import EspeakBackend
 from IPython.display import Audio, display
 
-# Run bash script first
-def run_setup():
-    setup_script = """#!/bin/bash
-    sudo apt-get update
-    sudo apt-get install -y espeak-ng
-    python3 -m pip install --upgrade pip
-    python3 -m pip install phonemizer requests
-    echo "Setup complete."
-    """
-    
-    with open("setup.sh", "w") as f:
-        f.write(setup_script)
-
-    os.chmod("setup.sh", 0o755)  # Make it executable
-    subprocess.run(["bash", "setup.sh"], check=True)
-
-# Run setup
-run_setup()
-
-
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 
